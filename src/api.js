@@ -153,14 +153,13 @@ class DICOMwebClient {
    * @param {Object} options
    * @param {Array.<RequestHook>} options.requestHooks - Request hooks.
    * @param {Object} [options.uploadCallbacks] - various listeners for the XMLHttpRequest.upload object
-   * @param {Function} [options.uploadCallbacks.loadStart] - listener for upload start event
+   * @param {Function} [options.uploadCallbacks.loadstart] - listener for upload start event
    * @param {Function} [options.uploadCallbacks.progress] - listener for upload progress event
    * @param {Function} [options.uploadCallbacks.abort] - listener for upload aborted event
    * @param {Function} [options.uploadCallbacks.error] - listener for upload error event
    * @param {Function} [options.uploadCallbacks.load] - listener for upload load completed successfully event
    * @param {Function} [options.uploadCallbacks.timeout] - listener for upload timeout event
-   * @param {Function} [options.uploadCallbacks.loadEnd] - listener for upload finished (success or fail) event
-   * @param {boolean} [options.uploadCallbacks.removeCallbacksOnLoadEnd] - flag indicating if all listeners should be removed when load ends
+   * @param {Function} [options.uploadCallbacks.loadend] - listener for upload finished (success or fail) event
    * @return {*}
    * @private
    */
@@ -238,72 +237,9 @@ class DICOMwebClient {
         }
       }
 
-      // Event triggered while upload progresses
+      // Events triggered while upload progresses.
       if ('uploadCallbacks' in options) {
-        const {uploadCallbacks} = options;
-
-        if ('loadStart' in uploadCallbacks && typeof uploadCallbacks.loadStart === 'function') {
-          request.upload.addEventListener('loadstart', uploadCallbacks.loadStart);
-        }
-
-        if ('progress' in uploadCallbacks && typeof uploadCallbacks.progress === 'function') {
-          request.upload.addEventListener('progress', uploadCallbacks.progress);
-        }
-
-        if ('abort' in uploadCallbacks && typeof uploadCallbacks.abort === 'function') {
-          request.upload.addEventListener('abort', uploadCallbacks.abort);
-        }
-
-        if ('error' in uploadCallbacks && typeof uploadCallbacks.error === 'function') {
-          request.upload.addEventListener('error', uploadCallbacks.error);
-        }
-
-        if ('load' in uploadCallbacks && typeof uploadCallbacks.load === 'function') {
-          request.upload.addEventListener('load', uploadCallbacks.load);
-        }
-
-        if ('timeout' in uploadCallbacks && typeof uploadCallbacks.timeout === 'function') {
-          request.upload.addEventListener('timeout', uploadCallbacks.timeout);
-        }
-
-        if ('loadEnd' in uploadCallbacks && typeof uploadCallbacks.loadEnd === 'function') {
-          request.upload.addEventListener('loadend', uploadCallbacks.loadEnd);
-        }
-
-        if (uploadCallbacks.removeCallbacksOnLoadEnd){
-          const removeCallbacks = () => {
-            request.upload.removeEventListener('loadend', removeCallbacks);
-
-            if ('loadStart' in uploadCallbacks && typeof uploadCallbacks.loadStart === 'function') {
-              request.upload.removeEventListener('loadstart', uploadCallbacks.loadStart);
-            }
-    
-            if ('progress' in uploadCallbacks && typeof uploadCallbacks.progress === 'function') {
-              request.upload.removeEventListener('progress', uploadCallbacks.progress);
-            }
-    
-            if ('abort' in uploadCallbacks && typeof uploadCallbacks.abort === 'function') {
-              request.upload.removeEventListener('abort', uploadCallbacks.abort);
-            }
-    
-            if ('error' in uploadCallbacks && typeof uploadCallbacks.error === 'function') {
-              request.upload.removeEventListener('error', uploadCallbacks.error);
-            }
-    
-            if ('load' in uploadCallbacks && typeof uploadCallbacks.load === 'function') {
-              request.upload.removeEventListener('load', uploadCallbacks.load);
-            }
-    
-            if ('timeout' in uploadCallbacks && typeof uploadCallbacks.timeout === 'function') {
-              request.upload.removeEventListener('timeout', uploadCallbacks.timeout);
-            }
-    
-            if ('loadEnd' in uploadCallbacks && typeof uploadCallbacks.loadEnd === 'function') {
-              request.upload.removeEventListener('loadend', uploadCallbacks.loadEnd);
-            }
-          };
-          request.upload.addEventListener('loadend', removeCallbacks);
-        }
+        DICOMwebClient._registerUploadCallbacks(request, options.uploadCallbacks);
       }
 
       if (requestHooks && areValidRequestHooks(requestHooks)) {
@@ -327,6 +263,41 @@ class DICOMwebClient {
         request.send();
       }
     });
+  }
+
+  /**
+   * Registers various callbacks for the XMLHttpRequest.upload object. A special loadend listener is added that
+   * will remove all the listeners added once the request has finished.
+   * @param {XMLHttpRequest} request - the request to register the callbacks for
+   * @param {Object} uploadCallbacks - various listeners for the XMLHttpRequest.upload object
+   * @param {Function} [uploadCallbacks.loadstart] - listener for upload start event
+   * @param {Function} [uploadCallbacks.progress] - listener for upload progress event
+   * @param {Function} [uploadCallbacks.abort] - listener for upload aborted event
+   * @param {Function} [uploadCallbacks.error] - listener for upload error event
+   * @param {Function} [uploadCallbacks.load] - listener for upload load completed successfully event
+   * @param {Function} [uploadCallbacks.timeout] - listener for upload timeout event
+   * @param {Function} [uploadCallbacks.loadend] - listener for upload finished (success or fail) event
+   */
+ static _registerUploadCallbacks(request, uploadCallbacks) {
+    const uploadCallbackEventNames = ['loadstart', 'progress', 'abort', 'error', 'load', 'timeout', 'loadend'];
+
+    request.timeout = 100;
+    for(const eventName of uploadCallbackEventNames) {
+      if(typeof uploadCallbacks[eventName] === 'function') {
+        request.upload.addEventListener(eventName, uploadCallbacks[eventName]);
+      }
+    }
+
+    const removeCallbacks = () => {
+      request.upload.removeEventListener('loadend', removeCallbacks);
+
+      for(const eventName of uploadCallbackEventNames) {
+        if(typeof uploadCallbacks[eventName] === 'function') {
+          request.upload.removeEventListener(eventName, uploadCallbacks[eventName]);
+        }
+      }
+    };
+    request.upload.addEventListener('loadend', removeCallbacks);    
   }
 
   /**
@@ -787,13 +758,13 @@ class DICOMwebClient {
    * @param {Array} data - Data that should be stored
    * @param {Function} progressCallback
    * @param {Object} [options.uploadCallbacks] - various listeners for the XMLHttpRequest.upload object
-   * @param {Function} [options.uploadCallbacks.loadStart] - listener for upload start event
+   * @param {Function} [options.uploadCallbacks.loadstart] - listener for upload start event
    * @param {Function} [options.uploadCallbacks.progress] - listener for upload progress event
    * @param {Function} [options.uploadCallbacks.abort] - listener for upload aborted event
    * @param {Function} [options.uploadCallbacks.error] - listener for upload error event
    * @param {Function} [options.uploadCallbacks.load] - listener for upload load completed successfully event
    * @param {Function} [options.uploadCallbacks.timeout] - listener for upload timeout event
-   * @param {Function} [options.uploadCallbacks.loadEnd] - listener for upload finished (success or fail) event
+   * @param {Function} [options.uploadCallbacks.loadend] - listener for upload finished (success or fail) event
    * @param {boolean} [options.uploadCallbacks.removeCallbacksOnLoadEnd] - flag indicating if all listeners should be removed when load ends
    * @private
    * @returns {Promise} Response
@@ -1857,14 +1828,13 @@ class DICOMwebClient {
    * @param {ArrayBuffer[]} options.datasets - DICOM Instances in PS3.10 format
    * @param {String} [options.studyInstanceUID] - Study Instance UID
    * @param {Object} [options.uploadCallbacks] - various listeners for the XMLHttpRequest.upload object
-   * @param {Function} [options.uploadCallbacks.loadStart] - listener for upload start event
+   * @param {Function} [options.uploadCallbacks.loadstart] - listener for upload start event
    * @param {Function} [options.uploadCallbacks.progress] - listener for upload progress event
    * @param {Function} [options.uploadCallbacks.abort] - listener for upload aborted event
    * @param {Function} [options.uploadCallbacks.error] - listener for upload error event
    * @param {Function} [options.uploadCallbacks.load] - listener for upload load completed successfully event
    * @param {Function} [options.uploadCallbacks.timeout] - listener for upload timeout event
-   * @param {Function} [options.uploadCallbacks.loadEnd] - listener for upload finished (success or fail) event
-   * @param {boolean} [options.uploadCallbacks.removeCallbacksOnLoadEnd] - flag indicating if all listeners should be removed when load ends
+   * @param {Function} [options.uploadCallbacks.loadend] - listener for upload finished (success or fail) event
    * @returns {Promise} Response message
    */
   storeInstances(options) {
