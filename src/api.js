@@ -281,7 +281,6 @@ class DICOMwebClient {
  static _registerUploadCallbacks(request, uploadCallbacks) {
     const uploadCallbackEventNames = ['loadstart', 'progress', 'abort', 'error', 'load', 'timeout', 'loadend'];
 
-    request.timeout = 100;
     for(const eventName of uploadCallbackEventNames) {
       if(typeof uploadCallbacks[eventName] === 'function') {
         request.upload.addEventListener(eventName, uploadCallbacks[eventName]);
